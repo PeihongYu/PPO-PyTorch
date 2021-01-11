@@ -1,5 +1,5 @@
 import gym
-from PPO import PPO, Memory
+from algos.PPO import PPO, Memory
 from PIL import Image
 import torch
 
