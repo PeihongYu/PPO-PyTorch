@@ -11,6 +11,31 @@ import math
 np.set_printoptions(precision=3, suppress=True)
 
 
+class traj_memory():
+    def __init__(self):
+        self.target_loc_x = []
+        self.target_loc_y = []
+        self.target_loc_z = []
+        self.camera_loc_x = []
+        self.camera_loc_y = []
+        self.camera_loc_z = []
+
+    def add_loc(self, target, camera):
+        self.target_loc_x.append(target[0])
+        self.target_loc_y.append(target[1])
+        self.target_loc_z.append(target[2])
+        self.camera_loc_x.append(camera[0])
+        self.camera_loc_y.append(camera[1])
+        self.camera_loc_z.append(camera[2])
+
+    def clear_memory(self):
+        del self.target_loc_x[:]
+        del self.target_loc_y[:]
+        del self.target_loc_z[:]
+        del self.camera_loc_x[:]
+        del self.camera_loc_y[:]
+        del self.camera_loc_z[:]
+
 class drone_env(gym.Env):
     def __init__(self):
         self.cur_step = 0
@@ -27,6 +52,8 @@ class drone_env(gym.Env):
         # -- Method 2
         # self.HUMAN_ID = "carla"
 
+        self.trajectory = traj_memory()
+
         self.observation_space = Box(low=np.array([-100, -100, -100, -1, -1, -1]),
                                      high=np.array([100, 100, 100, 1, 1, 1]))
         self.action_space = Box(low=-1, high=1, shape=(3,))
@@ -36,6 +63,8 @@ class drone_env(gym.Env):
         self.cur_step = 0
         self.client.enableApiControl(True)
         self.client.armDisarm(True)
+
+        self.trajectory.clear_memory()
 
         # set the starting position of the drone to be at 4 meters away from the human
         rel_pos = self.local_to_world(np.array([0, -1, -4]), 1)
@@ -96,6 +125,9 @@ class drone_env(gym.Env):
         # Get camera's pose
         camera_pose = self.client.simGetCameraInfo(camera_id).pose
         # drone_pose = self.client.simGetVehiclePose()
+
+        #log trajectory
+        self.trajectory.add_loc(self.v2t(human_pose.position), self.v2t(camera_pose.position))
 
         # Get relative position
         rel_pos = (human_pose.position - camera_pose.position).to_numpy_array()

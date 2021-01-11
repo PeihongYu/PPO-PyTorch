@@ -1,5 +1,5 @@
 import numpy as np
-from envs.drone_env import drone_env
+from envs.drone_env import *
 
 np.set_printoptions(precision=3, suppress=True)
 
@@ -84,8 +84,9 @@ class drone_env_human_follow_v1(drone_env):
         self.state = state_
         infor = {}
         infor['info'] = info
-        infor['dis'] = cur_dis
+        infor['rel_dis'] = self.distance(state_[0:3], np.zeros(3))
         infor['totalTrack'] = self.total_track
+        infor['traj'] = self.trajectory
 
         print("cur_step:", self.cur_step, "pos:", self.state, "action:", action, "reward: ", reward, "distance", round(cur_dis,3), "info: ", info, "lost_count: ", self.lost_count)
 
