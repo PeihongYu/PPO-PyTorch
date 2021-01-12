@@ -75,7 +75,12 @@ class drone_env(gym.Env):
         heading = self.client.simGetObjectPose(self.HUMAN_ID).orientation
         pose = airsim.Pose(position, heading)
         self.client.simSetVehiclePose(pose, True)
+
+        # use songxiaocheng's airsim (https://github.com/songxiaocheng/AirSim)
         self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, 1)
+
+        # use official airsim
+        # self.client.takeoffAsync(1).join()
 
         print("start position: ", [position.x_val, position.y_val, position.z_val])
 
