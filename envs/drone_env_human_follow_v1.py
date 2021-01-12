@@ -7,6 +7,10 @@ class drone_env_human_follow_v1(drone_env):
     def __init__(self):
         super().__init__()
 
+        self.observation_space = Box(low=np.array([-100, -100, -100, -1, -1, -1]),
+                                     high=np.array([100, 100, 100, 1, 1, 1]))
+        self.action_space = Box(low=-1, high=1, shape=(3,))
+
         self.state = self.getState()
 
         self.lost_count = 0

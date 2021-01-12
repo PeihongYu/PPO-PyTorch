@@ -54,10 +54,6 @@ class drone_env(gym.Env):
 
         self.trajectory = traj_memory()
 
-        self.observation_space = Box(low=np.array([-100, -100, -100, -1, -1, -1]),
-                                     high=np.array([100, 100, 100, 1, 1, 1]))
-        self.action_space = Box(low=-1, high=1, shape=(3,))
-
     def reset(self):
         self.client.reset()
         self.cur_step = 0
