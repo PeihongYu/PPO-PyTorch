@@ -1,13 +1,23 @@
 log_comet = True
+output_is_3d = False
 
-if log_comet:
-    # import comet_ml in the top of your file
-    from comet_ml import Experiment, ExistingExperiment
-    # Add the following code anywhere in your machine learning file
-    experiment = Experiment(api_key="CC3qOVi4obAD5yimHHXIZ24HA", project_name="human-following", workspace="peihongyu")
+if output_is_3d:
+    from envs.drone_env_human_follow_v1 import *
+
+    if log_comet:
+            # import comet_ml in the top of your file
+            from comet_ml import Experiment, ExistingExperiment
+            # Add the following code anywhere in your machine learning file
+            experiment = Experiment(api_key="CC3qOVi4obAD5yimHHXIZ24HA", project_name="human-following", workspace="peihongyu")
+else:
+    from envs.drone_env_human_follow_v2 import *
+    if log_comet:
+            # import comet_ml in the top of your file
+            from comet_ml import Experiment, ExistingExperiment
+            # Add the following code anywhere in your machine learning file
+            experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following-test", workspace="vishnuds")
 
 from algos.PPO_continuous import *
-from envs.drone_env_human_follow_v1 import *
 import matplotlib.pyplot as plt
 
 ############## Hyperparameters ##############
@@ -33,7 +43,11 @@ random_seed = None
 
 
 # creating environment
-env = drone_env_human_follow_v1()  # gym.make(env_name)
+if output_is_3d:
+    env = drone_env_human_follow_v1()  # gym.make(env_name)
+else:
+    env = drone_env_human_follow_v2()  # gym.make(env_name)
+
 state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 
