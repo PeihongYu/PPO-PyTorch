@@ -3,19 +3,27 @@ output_is_3d = False
 
 if output_is_3d:
     from envs.drone_env_human_follow_v1 import *
+    print('Using 3D output environment')    
 
     if log_comet:
             # import comet_ml in the top of your file
             from comet_ml import Experiment, ExistingExperiment
             # Add the following code anywhere in your machine learning file
             experiment = Experiment(api_key="CC3qOVi4obAD5yimHHXIZ24HA", project_name="human-following", workspace="peihongyu")
+            
+            print('Using Comet for logging')
+            
 else:
     from envs.drone_env_human_follow_v2 import *
+    print('Using 4D output environment')
+    
     if log_comet:
             # import comet_ml in the top of your file
             from comet_ml import Experiment, ExistingExperiment
             # Add the following code anywhere in your machine learning file
-            experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following-test", workspace="vishnuds")
+            experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following", workspace="vishnuds")
+            
+            print('Using Comet for logging')
 
 from algos.PPO_continuous import *
 import matplotlib.pyplot as plt
