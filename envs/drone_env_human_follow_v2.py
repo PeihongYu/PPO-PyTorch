@@ -1,5 +1,5 @@
 import numpy as np
-from env.drone_env_v2 import drone_env
+from envs.drone_env_v2 import drone_env
 
 np.set_printoptions(precision=3, suppress=True)
 
@@ -29,8 +29,9 @@ class drone_env_human_follow_v2(drone_env):
         return state
     
     def step(self, action):
-        action = self.local_to_world(action, 0)
-        self.moveByDist(action, forward=False)
+        angle = np.array(180.*action[3]/np.pi)
+        action = np.append( self.local_to_world(action[:3], 0), angle)
+        self.moveByDist(action, ForwardOnly=False)
         
         state_ = self.getState()
         cur_pos = self.getCurPosition()
