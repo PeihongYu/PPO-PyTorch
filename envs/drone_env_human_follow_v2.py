@@ -9,7 +9,7 @@ from gym.spaces import Box
 from collections import OrderedDict
 
 # from env.drone_env import drone_env
-from drone_env_v2 import drone_env
+from env.drone_env_v2 import drone_env
 
 np.set_printoptions(precision=3, suppress=True)
 # -------------------------------------------------------
@@ -55,12 +55,12 @@ class drone_env_heightcontrol(drone_env):
         return state
     
     def step(self, action):
-        angle = action[3]
-        action = self.local_to_world(action[:3])
+        #angle = action[3]
+        #action = self.local_to_world(action[:3])
         
-        self.moveByDist(action, forward=True)
+        self.moveByDist(action, forward=False)
         
-        self.rotateByAngle(angle)
+        # self.rotateByAngle(angle)
         
         state_ = self.getState()
         cur_pos = self.getCurPosition()
