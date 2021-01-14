@@ -1,5 +1,5 @@
 log_comet = True
-output_is_3d = False
+output_is_3d = True
 
 if output_is_3d:
     from envs.drone_env_human_follow_v1 import *
@@ -153,8 +153,11 @@ for i_episode in range(1, max_episodes + 1):
         break
 
     # save every 500 episodes
-    if i_episode % 500 == 0:
+    if i_episode % 50 == 0:
         torch.save(ppo.policy.state_dict(), 'model/PPO_continuous_{}_{}.pth'.format(env_name, i_episode))
+
+    if i_episode % 500 == 0:
+        torch.save(ppo.policy.state_dict(), 'model/PPO_continuous_{}.pth'.format(env_name))
 
     # logging
     if i_episode % log_interval == 0:
