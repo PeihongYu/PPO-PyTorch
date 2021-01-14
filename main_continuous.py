@@ -154,7 +154,7 @@ for i_episode in range(1, max_episodes + 1):
 
     # save every 500 episodes
     if i_episode % 500 == 0:
-        torch.save(ppo.policy.state_dict(), './PPO_continuous_{}.pth'.format(env_name))
+        torch.save(ppo.policy.state_dict(), 'model/PPO_continuous_{}_{}.pth'.format(env_name, i_episode))
 
     # logging
     if i_episode % log_interval == 0:
