@@ -52,7 +52,7 @@ class drone_env_human_follow_v2(drone_env):
                 reward = -1
                 info = "getting away"
        
-        reward -= np.abs(state_[0])/10.
+        # reward -= np.abs(state_[0])/10.
  
         h = 144
         w = 256
