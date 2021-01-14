@@ -10,7 +10,7 @@ if output_is_3d:
             from comet_ml import Experiment, ExistingExperiment
             # Add the following code anywhere in your machine learning file
             experiment = Experiment(api_key="CC3qOVi4obAD5yimHHXIZ24HA", project_name="human-following", workspace="peihongyu")
-            
+
             print('Using Comet for logging')
             
 else:
@@ -27,6 +27,8 @@ else:
 
 from algos.PPO_continuous import *
 import matplotlib.pyplot as plt
+import os
+import time
 
 ############## Hyperparameters ##############
 env_name = "drone_env_human_follow_v1"
@@ -34,6 +36,7 @@ save_traj = True
 render = False
 solved_reward = 300         # stop training if avg_reward > solved_reward
 log_interval = 20           # print avg reward in the interval
+traj_log_interval = 1
 max_episodes = 100000        # max training episodes
 max_timesteps = 1500        # max timesteps in one episode
 
@@ -55,6 +58,13 @@ if output_is_3d:
     env = drone_env_human_follow_v1()  # gym.make(env_name)
 else:
     env = drone_env_human_follow_v2()  # gym.make(env_name)
+
+
+if save_traj:
+    folder_name = str(int(time.time()))
+    os.mkdir('log/' + folder_name)
+    os.mkdir('log/' + folder_name + '/figs/')
+    os.mkdir('log/' + folder_name + '/traj/')
 
 state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
@@ -122,11 +132,19 @@ for i_episode in range(1, max_episodes + 1):
             experiment.log_metric("average reward of the last 100 episodes", sum(reward_history[-100:]) / 100, i_episode)
             experiment.log_metric("average relative distance of the last 100 episodes", sum(rel_dis_history[-100:]) / 100, i_episode)
 
-    if save_traj:
+    if save_traj and i_episode % traj_log_interval == 0:
+        # save figure
         plt.clf()
-        plt.plot(info['traj'].target_loc_x, info['traj'].target_loc_y, 'ro-')
-        plt.plot(info['traj'].camera_loc_x, info['traj'].camera_loc_x, 'bo-')
-        plt.savefig('log/figs/traj_ep' + str(i_episode) + '.png')
+        plt.plot(info['traj'].target_loc.x, info['traj'].target_loc.y, 'ro-')
+        plt.plot(info['traj'].camera_loc.x, info['traj'].camera_loc.y, 'bo-')
+        plt.savefig('log/' + folder_name + '/figs/traj_ep' + str(i_episode) + '.png')
+        # save file
+        traj = np.array([info['traj'].target_loc.x, info['traj'].target_loc.y, info['traj'].target_loc.z,
+                         info['traj'].camera_loc.x, info['traj'].camera_loc.y, info['traj'].camera_loc.z,
+                         info['traj'].camera_rot.x, info['traj'].camera_rot.y, info['traj'].camera_rot.z,
+                         info['traj'].rel_loc.x, info['traj'].rel_loc.y, info['traj'].rel_loc.z,
+                         info['traj'].rel_rot.x, info['traj'].rel_rot.y, info['traj'].rel_rot.z,])
+        np.savetxt('log/' + folder_name + '/traj/traj_ep' + str(i_episode) + '.txt', traj, fmt='%f', delimiter=',')
 
     # stop training if avg_reward > solved_reward
     if running_reward > (log_interval * solved_reward):

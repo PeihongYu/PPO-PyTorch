@@ -11,30 +11,45 @@ import math
 np.set_printoptions(precision=3, suppress=True)
 
 
-class traj_memory():
+class sub_memory():
     def __init__(self):
-        self.target_loc_x = []
-        self.target_loc_y = []
-        self.target_loc_z = []
-        self.camera_loc_x = []
-        self.camera_loc_y = []
-        self.camera_loc_z = []
+        self.x = []
+        self.y = []
+        self.z = []
 
-    def add_loc(self, target, camera):
-        self.target_loc_x.append(target[0])
-        self.target_loc_y.append(target[1])
-        self.target_loc_z.append(target[2])
-        self.camera_loc_x.append(camera[0])
-        self.camera_loc_y.append(camera[1])
-        self.camera_loc_z.append(camera[2])
+    def add_data(self, data):
+        self.x.append(data[0])
+        self.y.append(data[1])
+        self.z.append(data[2])
 
     def clear_memory(self):
-        del self.target_loc_x[:]
-        del self.target_loc_y[:]
-        del self.target_loc_z[:]
-        del self.camera_loc_x[:]
-        del self.camera_loc_y[:]
-        del self.camera_loc_z[:]
+        del self.x[:]
+        del self.y[:]
+        del self.z[:]
+
+
+class traj_memory():
+    def __init__(self):
+        self.target_loc = sub_memory()
+        self.camera_loc = sub_memory()
+        self.camera_rot = sub_memory()
+        self.rel_loc = sub_memory()
+        self.rel_rot = sub_memory()
+
+    def add_loc(self, target_loc, camera_loc, camera_rot, rel_loc, rel_rot):
+        self.target_loc.add_data(target_loc)
+        self.camera_loc.add_data(camera_loc)
+        self.camera_rot.add_data(camera_rot)
+        self.rel_loc.add_data(rel_loc)
+        self.rel_rot.add_data(rel_rot)
+
+    def clear_memory(self):
+        self.target_loc.clear_memory()
+        self.camera_loc.clear_memory()
+        self.camera_rot.clear_memory()
+        self.rel_loc.clear_memory()
+        self.rel_rot.clear_memory()
+
 
 class drone_env(gym.Env):
     def __init__(self):
@@ -73,10 +88,10 @@ class drone_env(gym.Env):
         self.client.simSetVehiclePose(pose, True)
 
         # use songxiaocheng's airsim (https://github.com/songxiaocheng/AirSim)
-        self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, 1)
+        # self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, 1)
 
         # use official airsim
-        # self.client.takeoffAsync(1).join()
+        self.client.takeoffAsync(1).join()
 
         print("start position: ", [position.x_val, position.y_val, position.z_val])
 
@@ -127,9 +142,6 @@ class drone_env(gym.Env):
         camera_pose = self.client.simGetCameraInfo(camera_id).pose
         # drone_pose = self.client.simGetVehiclePose()
 
-        #log trajectory
-        self.trajectory.add_loc(self.v2t(human_pose.position), self.v2t(camera_pose.position))
-
         # Get relative position
         rel_pos = (human_pose.position - camera_pose.position).to_numpy_array()
 
@@ -147,6 +159,12 @@ class drone_env(gym.Env):
 
         rot = R.from_matrix(rel_orient)
         rel_orient = rot.as_euler('zyx', degrees=True)
+
+
+        camera_rot_euler = R.from_quat(camera_pose.orientation.to_numpy_array()).as_euler('zyx', degrees=True)
+        # log trajectory
+        self.trajectory.add_loc(self.v2t(human_pose.position), self.v2t(camera_pose.position), self.v2t(camera_rot_euler),
+                                self.v2t(rel_pos), self.v2t(rel_orient))
 
         return rel_pos, rel_orient
 
