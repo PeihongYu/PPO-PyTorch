@@ -62,6 +62,7 @@ else:
 
 if save_traj:
     folder_name = str(int(time.time()))
+    os.mkdir('model/' + folder_name)
     os.mkdir('log/' + folder_name)
     os.mkdir('log/' + folder_name + '/figs/')
     os.mkdir('log/' + folder_name + '/traj/')
@@ -85,6 +86,7 @@ avg_length = 0
 time_step = 0
 reward_history = []
 rel_dis_history = []
+eplen_history = []
 loss = None
 
 # training loop
@@ -121,6 +123,7 @@ for i_episode in range(1, max_episodes + 1):
 
     reward_history.append(episode_reward)
     rel_dis_history.append(episode_rel_dis/(t+1))
+    eplen_history.append(t+1)
 
     if log_comet:
         experiment.log_metric("Reward", episode_reward, i_episode)
@@ -131,6 +134,7 @@ for i_episode in range(1, max_episodes + 1):
         if (len(reward_history) > 100):
             experiment.log_metric("average reward of the last 100 episodes", sum(reward_history[-100:]) / 100, i_episode)
             experiment.log_metric("average relative distance of the last 100 episodes", sum(rel_dis_history[-100:]) / 100, i_episode)
+            experiment.log_metric("average relative distance of the last 100 episodes", sum(eplen_history[-100:]) / 100, i_episode)
 
     if save_traj and i_episode % traj_log_interval == 0:
         # save figure
@@ -143,7 +147,8 @@ for i_episode in range(1, max_episodes + 1):
                          info['traj'].camera_loc.x, info['traj'].camera_loc.y, info['traj'].camera_loc.z,
                          info['traj'].camera_rot.x, info['traj'].camera_rot.y, info['traj'].camera_rot.z,
                          info['traj'].rel_loc.x, info['traj'].rel_loc.y, info['traj'].rel_loc.z,
-                         info['traj'].rel_rot.x, info['traj'].rel_rot.y, info['traj'].rel_rot.z,])
+                         info['traj'].rel_rot.x, info['traj'].rel_rot.y, info['traj'].rel_rot.z,
+                         info['traj'].reward_history])
         np.savetxt('log/' + folder_name + '/traj/traj_ep' + str(i_episode) + '.txt', traj, fmt='%f', delimiter=',')
 
     # stop training if avg_reward > solved_reward
@@ -153,7 +158,7 @@ for i_episode in range(1, max_episodes + 1):
         break
 
     # save every 500 episodes
-    if i_episode % 50 == 0:
+    if i_episode % 100 == 0:
         torch.save(ppo.policy.state_dict(), 'model/PPO_continuous_{}_{}.pth'.format(env_name, i_episode))
 
     if i_episode % 500 == 0:

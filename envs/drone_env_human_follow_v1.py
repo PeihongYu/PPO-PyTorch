@@ -62,6 +62,7 @@ class drone_env_human_follow_v1(drone_env):
 
         if img_coord[0] > w or img_coord[0] < 0 or img_coord[1] > h or img_coord[1] < 0 or state_[2] > 8 or state_[2] < 0:
             self.lost_count += 1
+            reward -= 0.5
         else:
             self.total_track += 1
             if self.lost_count != 0:
@@ -88,9 +89,11 @@ class drone_env_human_follow_v1(drone_env):
         self.state = state_
         infor = {}
         infor['info'] = info
-        infor['rel_dis'] = self.distance(state_[0:3], np.zeros(3))
+        infor['rel_dis'] = cur_dis # self.distance(state_[0:3], np.zeros(3))
         infor['totalTrack'] = self.total_track
         infor['traj'] = self.trajectory
+
+        self.trajectory.add_reward(reward)
 
         print("cur_step:", self.cur_step, "pos:", self.state, "action:", action, "reward: ", reward, "distance", round(cur_dis,3), "info: ", info, "lost_count: ", self.lost_count)
 
