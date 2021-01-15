@@ -134,7 +134,7 @@ for i_episode in range(1, max_episodes + 1):
         if (len(reward_history) > 100):
             experiment.log_metric("average reward of the last 100 episodes", sum(reward_history[-100:]) / 100, i_episode)
             experiment.log_metric("average relative distance of the last 100 episodes", sum(rel_dis_history[-100:]) / 100, i_episode)
-            experiment.log_metric("average relative distance of the last 100 episodes", sum(eplen_history[-100:]) / 100, i_episode)
+            experiment.log_metric("average episode length of the last 100 episodes", sum(eplen_history[-100:]) / 100, i_episode)
 
     if save_traj and i_episode % traj_log_interval == 0:
         # save figure
