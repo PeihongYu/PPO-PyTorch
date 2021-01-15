@@ -35,7 +35,7 @@ class traj_memory():
         self.camera_rot = sub_memory()
         self.rel_loc = sub_memory()
         self.rel_rot = sub_memory()
-        self.reward_history = []
+        self.reward_history = [0]
 
     def add_loc(self, target_loc, camera_loc, camera_rot, rel_loc, rel_rot):
         self.target_loc.add_data(target_loc)
@@ -53,7 +53,7 @@ class traj_memory():
         self.camera_rot.clear_memory()
         self.rel_loc.clear_memory()
         self.rel_rot.clear_memory()
-        del self.reward_history[:]
+        self.reward_history = [0]
 
 
 class drone_env(gym.Env):
