@@ -3,3 +3,4 @@ log/
 **/models/
 nohup.out
 **/gif/
+*.pth
