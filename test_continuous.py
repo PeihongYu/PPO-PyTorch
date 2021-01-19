@@ -1,3 +1,5 @@
+output_is_3d = False
+
 import gym
 from algos.PPO_continuous import PPO, Memory
 from PIL import Image
@@ -5,17 +7,24 @@ import torch
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+# creating environment
+if output_is_3d:
+    from envs.drone_env_human_follow_v1 import *
+    env = drone_env_human_follow_v1()  # gym.make(env_name)
+else:
+    from envs.drone_env_human_follow_v2 import *
+    env = drone_env_human_follow_v2()  # gym.make(env_name)
+
 def test():
     ############## Hyperparameters ##############
-    env_name = "BipedalWalker-v2"
-    env = gym.make(env_name)
+    env_name = "drone_env_human_follow_v1"
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
     
-    n_episodes = 3          # num of episodes to run
+    n_episodes = 5          # num of episodes to run
     max_timesteps = 1500    # max timesteps in one episode
-    render = True           # render the environment
-    save_gif = False        # png images are saved in gif folder
+    render = False           # render the environment
+    save_gif = True        # png images are saved in gif folder
     
     # filename and directory to load model from
     filename = "PPO_continuous_" +env_name+ ".pth"
@@ -40,6 +49,7 @@ def test():
         for t in range(max_timesteps):
             action = ppo.select_action(state, memory)
             state, reward, done, _ = env.step(action)
+            print(f'Reward:{reward}, Action: {action}, Done: {done}')
             ep_reward += reward
             if render:
                 env.render()
