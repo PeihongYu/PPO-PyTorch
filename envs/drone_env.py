@@ -35,6 +35,7 @@ class traj_memory():
         self.camera_rot = sub_memory()
         self.rel_loc = sub_memory()
         self.rel_rot = sub_memory()
+        self.reward_history = [0]
 
     def add_loc(self, target_loc, camera_loc, camera_rot, rel_loc, rel_rot):
         self.target_loc.add_data(target_loc)
@@ -43,12 +44,16 @@ class traj_memory():
         self.rel_loc.add_data(rel_loc)
         self.rel_rot.add_data(rel_rot)
 
+    def add_reward(self, reward):
+        self.reward_history.append(reward)
+
     def clear_memory(self):
         self.target_loc.clear_memory()
         self.camera_loc.clear_memory()
         self.camera_rot.clear_memory()
         self.rel_loc.clear_memory()
         self.rel_rot.clear_memory()
+        self.reward_history = [0]
 
 
 class drone_env(gym.Env):
@@ -88,24 +93,25 @@ class drone_env(gym.Env):
         self.client.simSetVehiclePose(pose, True)
 
         # use songxiaocheng's airsim (https://github.com/songxiaocheng/AirSim)
-        # self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, 1)
+        self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, 1)
 
         # use official airsim
-        self.client.takeoffAsync(1).join()
+        # self.client.takeoffAsync(1).join()
 
         print("start position: ", [position.x_val, position.y_val, position.z_val])
 
         time.sleep(2)
 
     def moveByDist(self, diff, ForwardOnly=True):
+        duration = 0.05
         if ForwardOnly:
             # vehicle's front always points in the direction of travel
-            self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), 1,
+            self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.ForwardOnly,
                                             yaw_mode=airsim.YawMode(False, 0)).join()
         else:
             # vehicle's front direction is controlled by diff[3]
-            self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), 1,
+            self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
                                             yaw_mode=airsim.YawMode(False, diff[3])).join()
         return 0
