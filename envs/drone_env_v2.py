@@ -106,6 +106,10 @@ class drone_env(gym.Env):
 
         time.sleep(2)
 
+    def render(self, mode):
+        if mode == 'rgb_array':
+            return self.getImg(type='rgb')
+    
     def moveByDist(self, diff, ForwardOnly=False):
         if ForwardOnly:
             # vehicle's front always points in the direction of travel
