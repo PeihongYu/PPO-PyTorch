@@ -111,11 +111,9 @@ class drone_env(gym.Env):
                                             yaw_mode=airsim.YawMode(False, 0)).join()
         else:
             # vehicle's front direction is controlled by diff[3]
-            angle = np.array(180.*diff[3]/np.pi) # transform input (-1 to 1) to degree
-            
             self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
-                                            yaw_mode=airsim.YawMode(True, angle)).join()
+                                            yaw_mode=airsim.YawMode(True, diff[3])).join()
         return 0
 
     def getState(self):
@@ -184,6 +182,13 @@ class drone_env(gym.Env):
         :param flag: 0: use camera as the reference local framework; 1: use the target human as reference
         """
         #
+        # If vector has angle as well, split it 
+        angle = None
+        if len(vec) == 4:
+            # Convert angle to degrees
+            angle = np.array(180.*vec[3]/np.pi)
+            vec = vec[:3]
+            
         if flag == 0:  # using camera
             pose = self.client.simGetCameraInfo(camera_id).pose
         else:  # using human
@@ -191,6 +196,11 @@ class drone_env(gym.Env):
         rot = R.from_quat(pose.orientation.to_numpy_array()).as_matrix()
         comp_rot = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
         res = rot.dot(comp_rot.dot(vec))
+        
+        if angle is not None:
+            # If angle was input, append to the transformed vector
+            res = np.append(res, angle)
+        
         return res
 
     def get_object_pose(self, object_id):
