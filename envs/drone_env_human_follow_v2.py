@@ -95,3 +95,7 @@ class drone_env_human_follow_v2(drone_env):
         print("cur_step:", self.cur_step, "pos:", self.state, "action (w/ angle):", action, "reward: ", reward, "distance", round(cur_dis,3), "info: ", info, "lost_count: ", self.lost_count)
         
         return state_, reward, done, infor 
+
+    def render(self, mode):
+        return super().render(mode)
+    
