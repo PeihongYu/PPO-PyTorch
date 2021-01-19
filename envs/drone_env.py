@@ -102,7 +102,7 @@ class drone_env(gym.Env):
 
         time.sleep(2)
 
-    def moveByDist(self, diff, ForwardOnly=True):
+    def moveByDist(self, diff, ForwardOnly=False):
         duration = 0.05
         if ForwardOnly:
             # vehicle's front always points in the direction of travel
@@ -111,9 +111,11 @@ class drone_env(gym.Env):
                                             yaw_mode=airsim.YawMode(False, 0)).join()
         else:
             # vehicle's front direction is controlled by diff[3]
+            angle = np.array(180.*diff[3]/np.pi) # transform input (-1 to 1) to degree
+            
             self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
-                                            yaw_mode=airsim.YawMode(False, diff[3])).join()
+                                            yaw_mode=airsim.YawMode(True, angle)).join()
         return 0
 
     def getState(self):
