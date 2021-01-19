@@ -27,13 +27,13 @@ class drone_env_human_follow_v1(drone_env):
 
     def getState(self):
         rel_pos, rel_orient = self.get_relloc_camera()
-        state = np.concatenate((rel_pos, rel_orient/180))
+        state = np.concatenate((rel_pos, rel_orient/180.))
 
         return state
 
     def step(self, action):
         action = self.local_to_world(action, 0)
-        self.moveByDist(action)
+        self.moveByDist(action, ForwardOnly=True)
 
         state_ = self.getState()
         cur_pos = self.getCurPosition()
@@ -98,3 +98,6 @@ class drone_env_human_follow_v1(drone_env):
         print("cur_step:", self.cur_step, "pos:", self.state, "action:", action, "reward: ", reward, "distance", round(cur_dis,3), "info: ", info, "lost_count: ", self.lost_count)
 
         return state_, reward, done, infor
+
+    def render(self, mode):
+        return super().render(mode)
