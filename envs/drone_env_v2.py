@@ -35,7 +35,8 @@ class traj_memory():
         self.camera_rot = sub_memory()
         self.rel_loc = sub_memory()
         self.rel_rot = sub_memory()
-
+        self.reward_history = [0]
+        
     def add_loc(self, target_loc, camera_loc, camera_rot, rel_loc, rel_rot):
         self.target_loc.add_data(target_loc)
         self.camera_loc.add_data(camera_loc)
@@ -43,12 +44,16 @@ class traj_memory():
         self.rel_loc.add_data(rel_loc)
         self.rel_rot.add_data(rel_rot)
 
+    def add_reward(self, reward):
+        self.reward_history.append(reward)
+
     def clear_memory(self):
         self.target_loc.clear_memory()
         self.camera_loc.clear_memory()
         self.camera_rot.clear_memory()
         self.rel_loc.clear_memory()
         self.rel_rot.clear_memory()
+        self.reward_history = [0]
 
 
 class drone_env(gym.Env):
@@ -69,10 +74,6 @@ class drone_env(gym.Env):
 
         self.trajectory = traj_memory()
         
-        self.observation_space = Box(low=np.array([-100, -100, -100, -1, -1, -1]),
-                                     high=np.array([100, 100, 100, 1, 1, 1]))
-        self.action_space = Box(low=-1, high=1, shape=(4,))#shape=(3,))
-
     def reset(self):
         self.client.reset()
         self.cur_step = 0
@@ -111,14 +112,15 @@ class drone_env(gym.Env):
             return self.getImg(type='rgb')
     
     def moveByDist(self, diff, ForwardOnly=False):
+        duration = 0.05
         if ForwardOnly:
             # vehicle's front always points in the direction of travel
-            self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), 1,
+            self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.ForwardOnly,
                                             yaw_mode=airsim.YawMode(False, 0)).join()
         else:
             # vehicle's front direction is controlled by diff[3]
-            self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), 1,
+            self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
                                             yaw_mode=airsim.YawMode(True, diff[3])).join()
         return 0
@@ -189,6 +191,13 @@ class drone_env(gym.Env):
         :param flag: 0: use camera as the reference local framework; 1: use the target human as reference
         """
         #
+        # If vector has angle as well, split it 
+        angle = None
+        if len(vec) == 4:
+            # Convert angle to degrees
+            angle = np.array(180.*vec[3]/np.pi)
+            vec = vec[:3]
+        
         if flag == 0:  # using camera
             pose = self.client.simGetCameraInfo(camera_id).pose
         else:  # using human
@@ -196,6 +205,11 @@ class drone_env(gym.Env):
         rot = R.from_quat(pose.orientation.to_numpy_array()).as_matrix()
         comp_rot = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
         res = rot.dot(comp_rot.dot(vec))
+        
+        if angle is not None:
+            # If angle was input, append to the transformed vector
+            res = np.append(res, angle)
+        
         return res
 
     def get_object_pose(self, object_id):
