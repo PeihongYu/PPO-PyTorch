@@ -102,6 +102,11 @@ class drone_env(gym.Env):
 
         time.sleep(2)
 
+    def render(self, mode):
+        if mode == 'rgb_array':
+            return self.getImg(type='rgb')
+
+
     def moveByDist(self, diff, ForwardOnly=False):
         duration = 0.05
         if ForwardOnly:
