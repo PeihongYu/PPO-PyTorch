@@ -59,10 +59,14 @@ class traj_memory():
 class drone_env(gym.Env):
     def __init__(self):
         self.cur_step = 0
+        self.camera_id = '0'
+
         self.client = airsim.MultirotorClient()
         self.client.confirmConnection()
         self.client.enableApiControl(True)
         self.client.armDisarm(True)
+        orientation = airsim.to_quaternion(-np.pi/6, 0, 0)
+        self.client.simSetCameraOrientation('0', orientation)
 
         # obtain human id
         # -- Method 1
@@ -79,11 +83,13 @@ class drone_env(gym.Env):
         self.cur_step = 0
         self.client.enableApiControl(True)
         self.client.armDisarm(True)
+        orientation = airsim.to_quaternion(-np.pi/6, 0, 0)
+        self.client.simSetCameraOrientation('0', orientation)
 
         self.trajectory.clear_memory()
 
         # set the starting position of the drone to be at 4 meters away from the human
-        rel_pos = self.local_to_world(np.array([0, -1, -4]), 1)
+        rel_pos = self.local_to_world(np.array([0, -3, -4]), 1)
         position = self.client.simGetObjectPose(self.HUMAN_ID).position
         position.x_val += rel_pos[0]
         position.y_val += rel_pos[1]
@@ -133,13 +139,9 @@ class drone_env(gym.Env):
     def getCurVelocity(self):
         return self.v2t(self.client.getMultirotorState().kinematics_estimated.linear_velocity)
 
-    def get_relloc_camera(self, camera_id='0'):
+    def get_relloc_camera(self):
         """
         Function to get position of human relative to the camera
-
-        Parameters
-        ----------
-            camera_id: ID of the camera from which we want to observe the environment
 
         Returns
         -------
@@ -150,8 +152,8 @@ class drone_env(gym.Env):
         # Get human's pose
         human_pose = self.get_object_pose(self.HUMAN_ID)
         # Get camera's pose
-        camera_pose = self.client.simGetCameraInfo(camera_id).pose
-        # drone_pose = self.client.simGetVehiclePose()
+        camera_pose = self.client.simGetCameraInfo(self.camera_id).pose
+        # human_pose = self.client.simGetVehiclePose()
 
         # Get relative position
         rel_pos = (human_pose.position - camera_pose.position).to_numpy_array()
@@ -179,7 +181,7 @@ class drone_env(gym.Env):
 
         return rel_pos, rel_orient
 
-    def local_to_world(self, vec, flag, camera_id='0'):
+    def local_to_world(self, vec, flag):
         """
         Function to transform a vector from a local coordinate framework to the world framework
 
@@ -195,7 +197,7 @@ class drone_env(gym.Env):
             vec = vec[:3]
             
         if flag == 0:  # using camera
-            pose = self.client.simGetCameraInfo(camera_id).pose
+            pose = self.client.simGetCameraInfo(self.camera_id).pose
         else:  # using human
             pose = self.get_object_pose(self.HUMAN_ID)
         rot = R.from_quat(pose.orientation.to_numpy_array()).as_matrix()
@@ -233,9 +235,9 @@ class drone_env(gym.Env):
             imageType = airsim.ImageType.Segmentation
             pixels_as_float = False
 
-        responses = self.client.simGetImages([airsim.ImageRequest(0, imageType, pixels_as_float, False)])
+        responses = self.client.simGetImages([airsim.ImageRequest(self.camera_id, imageType, pixels_as_float, False)])
         while responses[0].height == 0:
-            responses = self.client.simGetImages([airsim.ImageRequest(0, imageType, pixels_as_float, False)])
+            responses = self.client.simGetImages([airsim.ImageRequest(self.camera_id, imageType, pixels_as_float, False)])
 
         if pixels_as_float:
             img1d = np.array(responses[0].image_data_float, dtype=np.float)

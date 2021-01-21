@@ -56,7 +56,7 @@ class drone_env_human_follow_v1(drone_env):
 
         h = 144
         w = 256
-        K = np.array([[w / 2, 0, w / 2], [0, h / 2, h / 2], [0, 0, 1]])
+        K = np.array([[w / 2, 0, w / 2], [0, w / 2, h / 2], [0, 0, 1]])
         img_coord = K.dot(state_[0:3])
         img_coord = img_coord / img_coord[2]
 
