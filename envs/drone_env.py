@@ -11,7 +11,7 @@ import math
 np.set_printoptions(precision=3, suppress=True)
 
 
-class sub_memory():
+class SubMemory():
     def __init__(self):
         self.x = []
         self.y = []
@@ -28,13 +28,13 @@ class sub_memory():
         del self.z[:]
 
 
-class traj_memory():
+class TrajMemory():
     def __init__(self):
-        self.target_loc = sub_memory()
-        self.camera_loc = sub_memory()
-        self.camera_rot = sub_memory()
-        self.rel_loc = sub_memory()
-        self.rel_rot = sub_memory()
+        self.target_loc = SubMemory()
+        self.camera_loc = SubMemory()
+        self.camera_rot = SubMemory()
+        self.rel_loc = SubMemory()
+        self.rel_rot = SubMemory()
         self.reward_history = [0]
 
     def add_loc(self, target_loc, camera_loc, camera_rot, rel_loc, rel_rot):
@@ -56,7 +56,7 @@ class traj_memory():
         self.reward_history = [0]
 
 
-class drone_env(gym.Env):
+class DroneEnv(gym.Env):
     def __init__(self):
         self.cur_step = 0
         self.camera_id = '0'
@@ -65,7 +65,7 @@ class drone_env(gym.Env):
         self.client.confirmConnection()
         self.client.enableApiControl(True)
         self.client.armDisarm(True)
-        orientation = airsim.to_quaternion(-np.pi/6, 0, 0)
+        orientation = airsim.to_quaternion(-np.pi / 6, 0, 0)
         self.client.simSetCameraOrientation('0', orientation)
 
         # obtain human id
@@ -76,21 +76,16 @@ class drone_env(gym.Env):
         # -- Method 2
         # self.HUMAN_ID = "carla"
 
-        self.trajectory = traj_memory()
+        self.trajectory = TrajMemory()
 
     def reset(self):
-        self.client.reset()
         self.cur_step = 0
-        self.client.enableApiControl(True)
-        self.client.armDisarm(True)
-        orientation = airsim.to_quaternion(-np.pi/6, 0, 0)
-        self.client.simSetCameraOrientation('0', orientation)
-
         self.trajectory.clear_memory()
 
         # set the starting position of the drone to be at 4 meters away from the human
-        rel_pos = self.local_to_world(np.array([0, -3, -4]), 1)
+        rel_pos = self.local_to_world(np.array([0, -2, -4]), 1)
         position = self.client.simGetObjectPose(self.HUMAN_ID).position
+        position.z_val -= 1.7 / 2
         position.x_val += rel_pos[0]
         position.y_val += rel_pos[1]
         position.z_val += rel_pos[2]
@@ -99,45 +94,51 @@ class drone_env(gym.Env):
         self.client.simSetVehiclePose(pose, True)
 
         # use songxiaocheng's airsim (https://github.com/songxiaocheng/AirSim)
-        self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, 1)
+        self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, 1).join()
 
         # use official airsim
-        # self.client.takeoffAsync(1).join()
+        # self.client.takeoffAsync().join()
 
-        print("start position: ", [position.x_val, position.y_val, position.z_val])
-
-        time.sleep(2)
+        print("===== start position: ", self.v2t(position))
 
     def render(self, mode):
         if mode == 'rgb_array':
-            return self.getImg(type='rgb')
+            return self.get_image(type='rgb')
 
-
-    def moveByDist(self, diff, ForwardOnly=False):
+    def move_by_dist(self, diff, ForwardOnly=False):
         duration = 0.05
         if ForwardOnly:
-            # vehicle's front always points in the direction of travel
+            # 3D control, vehicle's front always points in the direction of travel
             self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.ForwardOnly,
                                             yaw_mode=airsim.YawMode(False, 0)).join()
         else:
-            # vehicle's front direction is controlled by diff[3]
+            # 4D control, vehicle's front direction is controlled by diff[3]
             self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
                                             yaw_mode=airsim.YawMode(True, diff[3])).join()
         return 0
 
-    def getState(self):
+    def get_state(self):
         return OrderedDict()
 
-    def getObjectPosition(self, name):
-        return self.v2t(self.client.simGetObjectPose(name).position)
-
-    def getCurPosition(self):
+    def get_cur_position(self):
         return self.v2t(self.client.getMultirotorState().kinematics_estimated.position)
 
-    def getCurVelocity(self):
+    def get_cur_velocity(self):
         return self.v2t(self.client.getMultirotorState().kinematics_estimated.linear_velocity)
+
+    def get_object_pose(self, object_id):
+        pose = self.client.simGetObjectPose(object_id)
+        # sometimes simGetObjectPose returns NaN values, we need to retry the call a number of
+        # times until valid data is returned
+        # reference: https://github.com/microsoft/AirSim/issues/2695
+        while (math.isnan(pose.position.x_val) or math.isnan(pose.position.y_val) or
+               math.isnan(pose.position.z_val) or math.isnan(pose.orientation.x_val) or
+               math.isnan(pose.orientation.y_val) or math.isnan(pose.orientation.z_val) or
+               math.isnan(pose.orientation.w_val)):
+            pose = self.client.simGetObjectPose(object_id)
+        return pose
 
     def get_relloc_camera(self):
         """
@@ -151,9 +152,11 @@ class drone_env(gym.Env):
         """
         # Get human's pose
         human_pose = self.get_object_pose(self.HUMAN_ID)
+        # Adjust human_pose to be at the human center, 1.7 is the human height
+        human_pose.position.z_val -= 1.7 / 2
         # Get camera's pose
         camera_pose = self.client.simGetCameraInfo(self.camera_id).pose
-        # human_pose = self.client.simGetVehiclePose()
+        # drone_pose = self.client.simGetVehiclePose()
 
         # Get relative position
         rel_pos = (human_pose.position - camera_pose.position).to_numpy_array()
@@ -173,10 +176,10 @@ class drone_env(gym.Env):
         rot = R.from_matrix(rel_orient)
         rel_orient = rot.as_euler('zyx', degrees=True)
 
-
         camera_rot_euler = R.from_quat(camera_pose.orientation.to_numpy_array()).as_euler('zyx', degrees=True)
         # log trajectory
-        self.trajectory.add_loc(self.v2t(human_pose.position), self.v2t(camera_pose.position), self.v2t(camera_rot_euler),
+        self.trajectory.add_loc(self.v2t(human_pose.position), self.v2t(camera_pose.position),
+                                self.v2t(camera_rot_euler),
                                 self.v2t(rel_pos), self.v2t(rel_orient))
 
         return rel_pos, rel_orient
@@ -189,13 +192,13 @@ class drone_env(gym.Env):
         :param flag: 0: use camera as the reference local framework; 1: use the target human as reference
         """
         #
-        # If vector has angle as well, split it 
+        # If vector has angle as well, split it
         angle = None
         if len(vec) == 4:
             # Convert angle to degrees
-            angle = np.array(180.*vec[3]/np.pi)
+            angle = np.array(180. * vec[3] / np.pi)
             vec = vec[:3]
-            
+
         if flag == 0:  # using camera
             pose = self.client.simGetCameraInfo(self.camera_id).pose
         else:  # using human
@@ -203,26 +206,14 @@ class drone_env(gym.Env):
         rot = R.from_quat(pose.orientation.to_numpy_array()).as_matrix()
         comp_rot = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
         res = rot.dot(comp_rot.dot(vec))
-        
+
         if angle is not None:
             # If angle was input, append to the transformed vector
             res = np.append(res, angle)
-        
+
         return res
 
-    def get_object_pose(self, object_id):
-        pose = self.client.simGetObjectPose(object_id)
-        # sometimes simGetObjectPose returns NaN values, we need to retry the call a number of
-        # times until valid data is returned
-        # reference: https://github.com/microsoft/AirSim/issues/2695
-        while (math.isnan(pose.position.x_val) or math.isnan(pose.position.y_val) or
-               math.isnan(pose.position.z_val) or math.isnan(pose.orientation.x_val) or
-               math.isnan(pose.orientation.y_val) or math.isnan(pose.orientation.z_val) or
-               math.isnan(pose.orientation.w_val)):
-            pose = self.client.simGetObjectPose(object_id)
-        return pose
-
-    def getImg(self, type):
+    def get_image(self, type):
         image_size = 84
 
         if type == 'depth':
@@ -237,7 +228,8 @@ class drone_env(gym.Env):
 
         responses = self.client.simGetImages([airsim.ImageRequest(self.camera_id, imageType, pixels_as_float, False)])
         while responses[0].height == 0:
-            responses = self.client.simGetImages([airsim.ImageRequest(self.camera_id, imageType, pixels_as_float, False)])
+            responses = self.client.simGetImages(
+                [airsim.ImageRequest(self.camera_id, imageType, pixels_as_float, False)])
 
         if pixels_as_float:
             img1d = np.array(responses[0].image_data_float, dtype=np.float)
