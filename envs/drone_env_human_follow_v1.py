@@ -70,7 +70,7 @@ class DroneEnvHumanFollowV1(DroneEnv):
         cur_dis = self.distance(cur_state[0:3], best)
         if cur_dis < 2:
             reward = 2 - self.distance(cur_state[0:3], best) + 1
-            reward_v1 = reward
+            reward_v1 = reward - 1
             info = "good range"
         else:
             reward_v1 = 0

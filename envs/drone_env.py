@@ -82,6 +82,14 @@ class DroneEnv(gym.Env):
         self.cur_step = 0
         self.trajectory.clear_memory()
 
+        cur_pos = self.get_cur_position()
+        if math.isnan(cur_pos[0]) or math.isnan(cur_pos[1]) or math.isnan(cur_pos[2]):
+            self.client.reset()
+            self.client.enableApiControl(True)
+            self.client.armDisarm(True)
+            orientation = airsim.to_quaternion(-np.pi / 6, 0, 0)
+            self.client.simSetCameraOrientation('0', orientation)
+
         # set the starting position of the drone to be at 4 meters away from the human
         rel_pos = self.local_to_world(np.array([0, -2, -4]), 1)
         position = self.client.simGetObjectPose(self.HUMAN_ID).position
