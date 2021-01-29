@@ -72,13 +72,13 @@ if __name__ == '__main__':
     render = args.render
 
     ############## Hyperparameters ##############
-    solved_reward = 300  # stop training if avg_reward > solved_reward
+    solved_reward = 1000  # stop training if avg_reward > solved_reward
     log_interval = 20  # print avg reward in the interval
 
     max_episodes = 100000  # max training episodes
     max_timesteps = 1500  # max timesteps in one episode
 
-    update_timestep = 100  # update policy every n timesteps
+    update_timestep = 1000  # update policy every n timesteps
     action_std = 0.5  # constant std for action distribution (Multivariate Normal)
     K_epochs = 80  # update policy for K epochs
     eps_clip = 0.2  # clip parameter for PPO
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     lr = 0.0003  # parameters for Adam optimizer
     betas = (0.9, 0.999)
 
-    random_seed = None
+    random_seed = 2
     #############################################
 
     env = DroneEnvHumanFollowV1(args.reward_version)
@@ -178,7 +178,8 @@ if __name__ == '__main__':
                 torch.save(ppo.policy.state_dict(), 'model/' + folder_name + '/PPO_continuous_{}.pth'.format(env_name))
 
         # stop training if avg_reward > solved_reward
-        if args.save_model and (running_reward > (log_interval * solved_reward)):
+        # if args.save_model and (running_reward > (log_interval * solved_reward)):
+        if args.save_model and (sum(rel_dis_history[-100:]) / 100) > solved_reward:
             print("########## Solved! ##########")
             torch.save(ppo.policy.state_dict(),
                        'model/' + folder_name + '/PPO_continuous_solved_{}.pth'.format(env_name))
