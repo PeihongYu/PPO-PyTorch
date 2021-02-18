@@ -5,15 +5,24 @@ np.set_printoptions(precision=3, suppress=True)
 
 
 class DroneEnvHumanFollowV1(DroneEnv):
-    def __init__(self, reward_version='v1'):
+    def __init__(self, env_args):
         super().__init__()
 
-        self.reward_version = reward_version
+        self.reward_version = env_args['reward_version']
+        self.policy_model = env_args['policy_model']
+        self.use_temporal = env_args['use_temporal']
 
-        self.observation_space = Box(low=np.array([-100, -100, -100, -1, -1, -1]),
-                                     high=np.array([100, 100, 100, 1, 1, 1]))
-        self.action_space = Box(low=-1, high=1, shape=(4,))
+        if self.use_temporal:
+            self.observation_space = Box(low=-100, high=100, shape=(24,))
+        else:
+            self.observation_space = Box(low=np.array([-100, -100, -100, -1, -1, -1]),
+                                         high=np.array([100, 100, 100, 1, 1, 1]))
+        # self.action_space = Box(low=-1, high=1, shape=(4,))
+        self.action_space = Box(low=np.array([-5, -5, -5, -1]),
+                                high=np.array([5, 5, 5, 1]))
 
+        self.state_queue = []
+        self.init_state_queue()
         self.state = self.get_state()
         self.cur_pos = self.get_cur_position()
 
@@ -23,6 +32,7 @@ class DroneEnvHumanFollowV1(DroneEnv):
 
     def reset(self):
         super().reset()
+        self.init_state_queue()
         self.state = self.get_state()
         self.cur_pos = self.get_cur_position()
 
@@ -31,34 +41,51 @@ class DroneEnvHumanFollowV1(DroneEnv):
         self.total_track = 0
         return self.state
 
+    def init_state_queue(self):
+        self.state_queue.clear()
+        for i in range(4):
+            self.state_queue.append(np.zeros(6))
+
     def get_state(self):
         rel_pos, rel_orient = self.get_relloc_camera()
-        state = np.concatenate((rel_pos, rel_orient / 180.))
+        cur_state = np.concatenate((rel_pos, rel_orient / 180.))
+
+        if self.use_temporal:
+            self.state_queue.pop()
+            self.state_queue.append(cur_state)
+            state = self.state_queue[0]
+            for i in range(3):
+                state = np.concatenate((state, self.state_queue[i+1]))
+        else:
+            state = cur_state
 
         return state
 
     def step(self, action):
+        if self.policy_model == 'Beta':
+            action = action * (self.action_space.high - self.action_space.low) + self.action_space.low
         action = self.local_to_world(action, 0)
         self.move_by_dist(action)
 
         cur_state = self.get_state()
         cur_pos = self.get_cur_position()
 
-        reward, info, done = self.get_reward(cur_state, cur_pos)
+        reward, info, done = self.get_reward(cur_state[-6:], cur_pos)
 
         self.cur_pos = cur_pos
         self.cur_step += 1
         self.state = cur_state
         information = {}
         information['info'] = info
-        information['rel_dis'] = self.distance(cur_state[0:3], np.array([0, 0, 4]))
+        information['rel_dis'] = self.distance(cur_state[-6:-3], np.array([0, 0, 4]))
         information['totalTrack'] = self.total_track
         information['traj'] = self.trajectory
 
         self.trajectory.add_reward(reward)
 
-        print("cur_step:", self.cur_step, "pos:", self.state, "action:", action, "reward: ", round(reward, 3),
-              ", distance", round(0, 3), ", info: ", info, ", lost_count: ", self.lost_count, "freeze_count: ", self.freeze_count)
+        print("cur_step:", self.cur_step, "pos:", self.state[-6:], "action:", action, "reward: ", round(reward, 3),
+              ", distance", round(0, 3), ", info: ", info, ", lost_count: ", self.lost_count, "freeze_count: ",
+              self.freeze_count)
 
         return cur_state, reward, done, information
 

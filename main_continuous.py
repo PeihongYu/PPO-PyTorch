@@ -6,12 +6,12 @@ import os
 import time
 import argparse
 
-# add some test information
-
 parser = argparse.ArgumentParser()
 # env
 parser.add_argument('--reward_version', type=str, default="v1")
 parser.add_argument('--render', type=bool, default=False)
+parser.add_argument('--policy_model', type=str, default='Gaussian')  # Beta
+parser.add_argument('--use_temporal', type=bool, default=True)
 # logging
 parser.add_argument('--test_mode', type=bool, default=False)  # Disable all the logging if in test mode
 # trajectory logging
@@ -92,7 +92,11 @@ if __name__ == '__main__':
     random_seed = 2
     #############################################
 
-    env = DroneEnvHumanFollowV1(args.reward_version)
+    env_args = {'reward_version': args.reward_version,
+                'policy_model': args.policy_model,
+                'use_temporal': args.use_temporal}
+
+    env = DroneEnvHumanFollowV1(env_args)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 
@@ -103,7 +107,7 @@ if __name__ == '__main__':
         np.random.seed(random_seed)
 
     memory = Memory()
-    ppo = PPO(state_dim, action_dim, action_std, lr, betas, gamma, K_epochs, eps_clip)
+    ppo = PPO(state_dim, action_dim, action_std, lr, betas, gamma, K_epochs, eps_clip, args.policy_model)
     print(lr, betas)
 
     # logging variables
