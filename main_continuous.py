@@ -6,6 +6,8 @@ import os
 import time
 import argparse
 
+# add some test information
+
 parser = argparse.ArgumentParser()
 # env
 parser.add_argument('--reward_version', type=str, default="v1")
