@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--reward_version', type=str, default="v1")
 parser.add_argument('--render', type=bool, default=False)
 parser.add_argument('--policy_model', type=str, default='Gaussian')  # Beta
-parser.add_argument('--use_temporal', type=bool, default=True)
+parser.add_argument('--use_temporal', type=bool, default=False)
 # logging
 parser.add_argument('--test_mode', type=bool, default=False)  # Disable all the logging if in test mode
 # trajectory logging
@@ -22,6 +22,10 @@ parser.add_argument('--log_comet', type=bool, default=True)
 parser.add_argument('--user_name', type=str, default="peihong")
 # model saving
 parser.add_argument('--save_model', type=bool, default=True)
+# model path
+parser.add_argument('--continue_training', type=bool, default=True)
+parser.add_argument('--model_dir', type=str, default='exp2')
+parser.add_argument('--model_id', type=int, default=1700)
 
 args = parser.parse_args()
 
@@ -39,7 +43,7 @@ if args.log_comet:
         experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following",
                                 workspace="vishnuds")
     else:
-        print('User not recongnized. Raising Error')
+        print('User not recognized. Raising Error')
         raise NameError
 
     print(f'Using Comet for logging for user {args.user_name}')
@@ -108,6 +112,10 @@ if __name__ == '__main__':
 
     memory = Memory()
     ppo = PPO(state_dim, action_dim, action_std, lr, betas, gamma, K_epochs, eps_clip, args.policy_model)
+    if args.continue_training:
+        model_name = './model/' + args.model_dir + '/' + 'PPO_continuous_drone_env_human_follow_v1_' + str(args.model_id) + '.pth'
+        ppo.policy_old.load_state_dict(torch.load(model_name))
+
     print(lr, betas)
 
     # logging variables
