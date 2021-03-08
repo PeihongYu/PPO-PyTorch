@@ -81,7 +81,15 @@ class DroneEnv(gym.Env):
     def reset(self):
         self.cur_step = 0
         self.trajectory.clear_memory()
-
+        
+        cur_pos = self.get_cur_position()
+        if math.isnan(cur_pos[0]) or math.isnan(cur_pos[1]) or math.isnan(cur_pos[2]) or self.client.simGetCollisionInfo().has_collided:
+            self.client.reset()
+            self.client.enableApiControl(True)
+            self.client.armDisarm(True)
+            orientation = airsim.to_quaternion(-np.pi / 6, 0 ,0)
+            self.client.simSetCameraOrientation('0', orientation)
+        
         # set the starting position of the drone to be at 4 meters away from the human
         rel_pos = self.local_to_world(np.array([0, -2, -4]), 1)
         position = self.client.simGetObjectPose(self.HUMAN_ID).position
@@ -106,17 +114,17 @@ class DroneEnv(gym.Env):
             return self.get_image(type='rgb')
 
     def move_by_dist(self, diff, ForwardOnly=False):
-        duration = 0.05
+        duration = 1.0 #0.1
         if ForwardOnly:
             # 3D control, vehicle's front always points in the direction of travel
             self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.ForwardOnly,
-                                            yaw_mode=airsim.YawMode(False, 0)).join()
+                                            yaw_mode=airsim.YawMode(False, 0))
         else:
             # 4D control, vehicle's front direction is controlled by diff[3]
             self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
-                                            yaw_mode=airsim.YawMode(True, diff[3])).join()
+                                            yaw_mode=airsim.YawMode(True, diff[3]))
         return 0
 
     def get_state(self):
