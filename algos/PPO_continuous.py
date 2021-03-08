@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.distributions import MultivariateNormal
 import gym
 import numpy as np
+#from FCN16s import FCN16s
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -26,7 +27,11 @@ class ActorCritic(nn.Module):
         super(ActorCritic, self).__init__()
         # action mean range -1 to 1
         self.actor =  nn.Sequential(
-                nn.Linear(state_dim, 64),
+                nn.Linear(state_dim, 1024),
+                nn.Tanh(),
+                nn.Linear(1024, 256),
+                nn.Tanh(),
+                nn.Linear(256, 64),
                 nn.Tanh(),
                 nn.Linear(64, 32),
                 nn.Tanh(),
@@ -35,7 +40,11 @@ class ActorCritic(nn.Module):
                 )
         # critic
         self.critic = nn.Sequential(
-                nn.Linear(state_dim, 64),
+                nn.Linear(state_dim, 1024),
+                nn.Tanh(),
+                nn.Linear(1024, 256),
+                nn.Tanh(),
+                nn.Linear(256, 64),
                 nn.Tanh(),
                 nn.Linear(64, 32),
                 nn.Tanh(),

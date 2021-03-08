@@ -1,10 +1,16 @@
+import matplotlib
+matplotlib.use('Agg')
+
 from comet_ml import Experiment, ExistingExperiment
 from algos.PPO_continuous import *
-from envs.drone_env_human_follow_v1 import *
+from envs.drone_env_human_follow_v2 import *
 import matplotlib.pyplot as plt
 import os
 import time
 import argparse
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(f'Using device: {device}')
 
 parser = argparse.ArgumentParser()
 # env
@@ -34,8 +40,9 @@ if args.log_comet:
         experiment = Experiment(api_key="CC3qOVi4obAD5yimHHXIZ24HA", project_name="human-following",
                                 workspace="peihongyu")
     elif args.user_name == 'vishnu':
-        experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following",
+        experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following-image",
                                 workspace="vishnuds")
+        # experiment = ExistingExperiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following", previous_experiment="0744a89d496b44a09348610e3f407fae", workspace="vishnuds")
     else:
         print('User not recongnized. Raising Error')
         raise NameError
@@ -43,7 +50,8 @@ if args.log_comet:
     print(f'Using Comet for logging for user {args.user_name}')
 
 if args.save_traj:
-    folder_name = str(int(time.time()))
+    # folder_name = '1611549955' 
+    folder_name = str(int(time.time()))+'_image'
     os.mkdir('model/' + folder_name)
     os.mkdir('log/' + folder_name)
     os.mkdir('log/' + folder_name + '/figs/')
@@ -72,13 +80,13 @@ if __name__ == '__main__':
     render = args.render
 
     ############## Hyperparameters ##############
-    solved_reward = 300  # stop training if avg_reward > solved_reward
+    solved_reward = 30000  # stop training if avg_reward > solved_reward
     log_interval = 20  # print avg reward in the interval
 
     max_episodes = 100000  # max training episodes
     max_timesteps = 1500  # max timesteps in one episode
 
-    update_timestep = 100  # update policy every n timesteps
+    update_timestep = 500#100  # update policy every n timesteps
     action_std = 0.5  # constant std for action distribution (Multivariate Normal)
     K_epochs = 80  # update policy for K epochs
     eps_clip = 0.2  # clip parameter for PPO
@@ -102,6 +110,12 @@ if __name__ == '__main__':
 
     memory = Memory()
     ppo = PPO(state_dim, action_dim, action_std, lr, betas, gamma, K_epochs, eps_clip)
+       
+    print('Loading model:')
+    print('model/1614464577_image/PPO_continuous_{}.pth'.format(env_name))
+    ppo.policy.load_state_dict(torch.load('model/1614464577_image/PPO_continuous_{}.pth'.format(env_name), map_location=device))
+    
+
     print(lr, betas)
 
     # logging variables
@@ -114,7 +128,9 @@ if __name__ == '__main__':
     loss = None
 
     # training loop
-    for i_episode in range(1, max_episodes + 1):
+    start_ep = 1501
+    #for i_episode in range(1, max_episodes + 1):
+    for i_episode in range(start_ep, max_episodes + 1):
 
         print("===== Episode: ", i_episode)
         state = env.reset()
@@ -126,6 +142,9 @@ if __name__ == '__main__':
             time_step += 1
             # Running policy_old:
             action = ppo.select_action(state, memory)
+
+            action[0:3] = 1.5*action[0:3]
+
             state, reward, done, info = env.step(action)
 
             # Saving reward and is_terminals:
@@ -169,10 +188,12 @@ if __name__ == '__main__':
             save_trajectory(i_episode, folder_name, info['traj'])
 
         if args.save_model:
+            
             # save every 100 episodes
-            if i_episode % 100 == 0:
+            if i_episode % 500 == 0:
                 torch.save(ppo.policy.state_dict(),
                            'model/' + folder_name + '/PPO_continuous_{}_{}.pth'.format(env_name, i_episode))
+            
             # save every 500 episodes
             if i_episode % 500 == 0:
                 torch.save(ppo.policy.state_dict(), 'model/' + folder_name + '/PPO_continuous_{}.pth'.format(env_name))
