@@ -91,7 +91,8 @@ class DroneEnv(gym.Env):
             self.client.simSetCameraOrientation('0', orientation)
         
         # set the starting position of the drone to be at 4 meters away from the human
-        rel_pos = self.local_to_world(np.array([0, -2, -4]), 1)
+        rel_pos = self.local_to_world(np.array([0, -2, -4]), 1) 
+        rel_pos += np.random.rand(*rel_pos.shape)
         position = self.client.simGetObjectPose(self.HUMAN_ID).position
         position.z_val -= 1.7 / 2
         position.x_val += rel_pos[0]
