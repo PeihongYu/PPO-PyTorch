@@ -1,3 +1,11 @@
+'''
+Contonuing experient checklist:
+Comet experiment: L47-49
+Folder name: L61-67
+Model loading: L125-134
+Start epoch: L148
+
+'''
 import matplotlib
 matplotlib.use('Agg')
 
@@ -40,9 +48,9 @@ if args.log_comet:
         experiment = Experiment(api_key="CC3qOVi4obAD5yimHHXIZ24HA", project_name="human-following",
                                 workspace="peihongyu")
     elif args.user_name == 'vishnu':
-        experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following-image",
-                                workspace="vishnuds")
-        # experiment = ExistingExperiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following", previous_experiment="0744a89d496b44a09348610e3f407fae", workspace="vishnuds")
+        # experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following-image",
+        #                         workspace="vishnuds")
+        experiment = ExistingExperiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following", previous_experiment="9358b91f5ddc48d8b83db2a1105be9b8", workspace="vishnuds")
     else:
         print('User not recongnized. Raising Error')
         raise NameError
@@ -50,12 +58,14 @@ if args.log_comet:
     print(f'Using Comet for logging for user {args.user_name}')
 
 if args.save_traj:
-    # folder_name = '1611549955' 
+    folder_name = '1616904531_image'
+    '''
     folder_name = str(int(time.time()))+'_image'
     os.mkdir('model/' + folder_name)
     os.mkdir('log/' + folder_name)
     os.mkdir('log/' + folder_name + '/figs/')
     os.mkdir('log/' + folder_name + '/traj/')
+    '''
 
 
 def save_trajectory(i_episode, folder_name, trajectory):
@@ -72,7 +82,7 @@ def save_trajectory(i_episode, folder_name, trajectory):
                      trajectory.rel_rot.x, trajectory.rel_rot.y, trajectory.rel_rot.z,
                      trajectory.reward_history])
     np.savetxt('log/' + folder_name + '/traj/traj_ep' + str(i_episode) + '.txt', traj, fmt='%f', delimiter=',')
-
+    
 
 if __name__ == '__main__':
 
@@ -86,7 +96,7 @@ if __name__ == '__main__':
     max_episodes = 100000  # max training episodes
     max_timesteps = 1500  # max timesteps in one episode
 
-    update_timestep = 500#100  # update policy every n timesteps
+    update_timestep = 100#500#100  # update policy every n timesteps
     action_std = 0.5  # constant std for action distribution (Multivariate Normal)
     K_epochs = 80  # update policy for K epochs
     eps_clip = 0.2  # clip parameter for PPO
@@ -110,12 +120,19 @@ if __name__ == '__main__':
 
     memory = Memory()
     ppo = PPO(state_dim, action_dim, action_std, lr, betas, gamma, K_epochs, eps_clip)
-       
-    print('Loading model:')
-    print('model/1614464577_image/PPO_continuous_{}.pth'.format(env_name))
-    ppo.policy.load_state_dict(torch.load('model/1614464577_image/PPO_continuous_{}.pth'.format(env_name), map_location=device))
     
-
+    print('Loading model:')
+    
+    # print('model/1616006199_image/PPO_continuous_{}.pth'.format(env_name))
+    # ppo.policy.load_state_dict(torch.load('model/1616006199_image/PPO_continuous_{}.pth'.format(env_name), map_location=device))
+    
+    print('model/1616904531_image/PPO_continuous_drone_env_human_follow_v1_3000.pth')
+    ppo.policy.load_state_dict(torch.load('model/1616904531_image/PPO_continuous_drone_env_human_follow_v1_2500.pth', map_location=device))
+    '''
+    print('Loading model:')
+    print('preTrained/stationary_v2_human.pth')
+    ppo.policy.load_state_dict(torch.load('preTrained/stationary_v2_human.pth', map_location=device)) 
+    '''
     print(lr, betas)
 
     # logging variables
@@ -128,7 +145,7 @@ if __name__ == '__main__':
     loss = None
 
     # training loop
-    start_ep = 1501
+    start_ep = 2501 #3001 #1501
     #for i_episode in range(1, max_episodes + 1):
     for i_episode in range(start_ep, max_episodes + 1):
 
@@ -143,7 +160,7 @@ if __name__ == '__main__':
             # Running policy_old:
             action = ppo.select_action(state, memory)
 
-            action[0:3] = 1.5*action[0:3]
+            action[0:3] = 1.2*action[0:3]
 
             state, reward, done, info = env.step(action)
 
@@ -185,7 +202,8 @@ if __name__ == '__main__':
                                       sum(eplen_history[-100:]) / 100, i_episode)
 
         if args.save_traj and (i_episode % args.traj_log_interval == 0):
-            save_trajectory(i_episode, folder_name, info['traj'])
+            #save_trajectory(i_episode, folder_name, info['traj'])
+            pass
 
         if args.save_model:
             
