@@ -20,6 +20,7 @@ class DroneEnvHumanFollowV1(DroneEnv):
         self.img_model.load_state_dict(torch.load('/scratch1/vishnuds/fcn16s_from_caffe.pth'))
         self.img_model.cuda();
         self.img_model.eval();
+        self.mean_bgr = np.array([104.00698793, 116.66876762, 122.67891434])
         print('FCN model loaded')
         
 
@@ -136,7 +137,8 @@ class DroneEnvHumanFollowV1(DroneEnv):
         return super().render(mode)
 
     def get_img_feat(self):
-        img = self.get_image(type='rgb')
+        img = self.get_image(type='rgb')[:,:,::-1]
+        img = img.astype(np.float64) - self.mean_bgr
         pimg = img.transpose(2,0,1)[np.newaxis,:,:,:]
         pimg = torch.from_numpy(pimg).float()
         
