@@ -109,10 +109,10 @@ class FCN16s(nn.Module):
         h = self.pool5(h)
 
         h = self.relu6(self.fc6(h))
-        h = self.drop6(h)
+        # h = self.drop6(h)
 
         h = self.relu7(self.fc7(h))
-        h = self.drop7(h)
+        # h = self.drop7(h)
 
         h = self.score_fr(h)
         h = self.flatten(h)
