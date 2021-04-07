@@ -10,8 +10,8 @@ import matplotlib
 matplotlib.use('Agg')
 
 from comet_ml import Experiment, ExistingExperiment
-from algos.PPO_continuous import *
-from envs.drone_env_human_follow_v2 import *
+from algos.PPO_continuous_v2 import *
+from envs.drone_env_human_follow import *
 import matplotlib.pyplot as plt
 import os
 import time
@@ -58,14 +58,14 @@ if args.log_comet:
     print(f'Using Comet for logging for user {args.user_name}')
 
 if args.save_traj:
-    folder_name = '1616904531_image'
-    '''
-    folder_name = str(int(time.time()))+'_image'
+    # folder_name = '1616904531_image'
+    
+    folder_name = 'test_dir' #str(int(time.time()))+'_image'
     os.mkdir('model/' + folder_name)
     os.mkdir('log/' + folder_name)
     os.mkdir('log/' + folder_name + '/figs/')
     os.mkdir('log/' + folder_name + '/traj/')
-    '''
+    
 
 
 def save_trajectory(i_episode, folder_name, trajectory):

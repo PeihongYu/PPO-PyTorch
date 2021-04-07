@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.distributions import MultivariateNormal
 import gym
 import numpy as np
-#from FCN16s import FCN16s
+from algos.FCN16s import FCN16s
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -26,7 +26,7 @@ class Memory:
 
 
 class FeatureFusion(nn.Module):
-    def __init__(self, out_dim):
+    def __init__(self, state_dim, out_dim):
         super(FeatureFusion, self).__init__()
         
         self.fcn = FCN16s()
@@ -39,8 +39,12 @@ class FeatureFusion(nn.Module):
         self.joint_nn  = nn.Linear(512+16, out_dim)
         self.joint_tanh = nn.Tanh()
 
-    def forward(self, x1, x2):
-        x1 = self.fcn(x1.permute(0, 3, 1, 2))
+    def forward(self, x):
+        x1, x2 = x
+        # print(f'x1 shape: {x1.shape}')
+        # print(f'x2 shape: {x2.shape}')        
+
+        x1 = self.fcn(x1)
         x1 = self.img_tanh(self.img_nn(x1))
         
         x2 = self.pos_tanh(self.pos_nn(x2))
@@ -52,15 +56,15 @@ class FeatureFusion(nn.Module):
         x = self.joint_tanh(self.joint_nn(x))
 
         return x 
-
+'''
 class ActorCritic(nn.Module):
-    def __init__(self, feat_dim, action_dim, action_std):
+    def __init__(self, state_dim, action_dim, action_std):
         super(ActorCritic, self).__init__()
         # action mean range -1 to 1
         self.actor =  nn.Sequential(
-                FeatureFusion(feat_dim, 1024),
+                FeatureFusion(state_dim, 512),
                 nn.Tanh(),
-                nn.Linear(1024, 256),
+                nn.Linear(512, 256),
                 nn.Tanh(),
                 nn.Linear(256, 64),
                 nn.Tanh(),
@@ -71,9 +75,9 @@ class ActorCritic(nn.Module):
                 )
         # critic
         self.critic = nn.Sequential(
-                FeatureFusion(feat_dim, 1024),
+                FeatureFusion(state_dim, 512),
                 nn.Tanh(),
-                nn.Linear(1024, 256),
+                nn.Linear(512, 256),
                 nn.Tanh(),
                 nn.Linear(256, 64),
                 nn.Tanh(),
@@ -81,13 +85,40 @@ class ActorCritic(nn.Module):
                 nn.Tanh(),
                 nn.Linear(32, 1)
                 )
-        self.action_var = torch.full((action_dim,), action_std*action_std).to(device)
 
+        self.action_var = torch.full((action_dim,), action_std*action_std).to(device)
+'''
+class ActorCritic(nn.Module):
+    def __init__(self, state_dim, action_dim, action_std):
+        super(ActorCritic, self).__init__()
+        # action mean range -1 to 1
+        self.actor =  nn.Sequential(
+                FeatureFusion(state_dim, 512),
+                nn.Tanh(),
+                nn.Linear(512, 64),
+                nn.Tanh(),
+                nn.Linear(64, 16),
+                nn.Tanh(),
+                nn.Linear(16, action_dim),
+                nn.Tanh()
+                )
+        # critic
+        self.critic = nn.Sequential(
+                FeatureFusion(state_dim, 512),
+                nn.Tanh(),
+                nn.Linear(512, 64),
+                nn.Tanh(),
+                nn.Linear(64, 16),
+                nn.Tanh(),
+                nn.Linear(16, 1)
+                )
+
+        self.action_var = torch.full((action_dim,), action_std*action_std).to(device)
     def forward(self):
         raise NotImplementedError
 
     def act(self, state, memory):
-        action_mean = self.actor(state[0], state[1])
+        action_mean = self.actor((state[0], state[1]))
         cov_mat = torch.diag(self.action_var).to(device)
 
         dist = MultivariateNormal(action_mean, cov_mat)
@@ -102,7 +133,7 @@ class ActorCritic(nn.Module):
         return action.detach()
 
     def evaluate(self, state, action):
-        action_mean = self.actor(state[0], state[1])
+        action_mean = self.actor((state[0], state[1]))
 
         action_var = self.action_var.expand_as(action_mean)
         cov_mat = torch.diag_embed(action_var).to(device)
@@ -111,7 +142,7 @@ class ActorCritic(nn.Module):
 
         action_logprobs = dist.log_prob(action)
         dist_entropy = dist.entropy()
-        state_value = self.critic(state[0], state[1])
+        state_value = self.critic((state[0], state[1]))
 
         return action_logprobs, torch.squeeze(state_value), dist_entropy
 
@@ -130,30 +161,31 @@ class PPO:
         self.policy_old.load_state_dict(self.policy.state_dict())
         
         fcn_pretrained_filename = '/scratch1/vishnuds/fcn16s_from_caffe.pth' 
-        policy.actor[0].fcn.load_state_dict(torch.load(fcn_pretrained_filename))
-        policy.critic[0].fcn.load_state_dict(torch.load(fcn_pretrained_filename))
-        policy_old.actor[0].fcn.load_state_dict(torch.load(fcn_pretrained_filename))
-        policy_old.critic[0].fcn.load_state_dict(torch.load(fcn_pretrained_filename))
+        print('Loading pre-trained FCN models')
+        self.policy.actor[0].fcn.load_state_dict(torch.load(fcn_pretrained_filename))
+        self.policy.critic[0].fcn.load_state_dict(torch.load(fcn_pretrained_filename))
+        self.policy_old.actor[0].fcn.load_state_dict(torch.load(fcn_pretrained_filename))
+        self.policy_old.critic[0].fcn.load_state_dict(torch.load(fcn_pretrained_filename))
         
- 
-        for param in policy.actor[0].fcn.parameters():
-            params.requires_grad = False
+        print('Freezing FCN layers')
+        for param in self.policy.actor[0].fcn.parameters():
+            param.requires_grad = False
         
-        for param in policy.critic[0].fcn.parameters():
-            params.requires_grad = False
+        for param in self.policy.critic[0].fcn.parameters():
+            param.requires_grad = False
         
-        for param in policy_old.actor[0].fcn.parameters():
-            params.requires_grad = False
+        for param in self.policy_old.actor[0].fcn.parameters():
+            param.requires_grad = False
 
-        for param in policy_old.critic[0].fcn.parameters():
-            params.requires_grad = False
+        for param in self.policy_old.critic[0].fcn.parameters():
+            param.requires_grad = False
 
         self.MseLoss = nn.MSELoss()
 
     def select_action(self, state, memory):
-        img_state = torch.FloatTensor(state[0].transpose(2,0,1).reshape(1, -1)).to(device)
+        img_state = torch.FloatTensor(state[0].reshape((1,)+state[0].shape)).to(device)
         pos_state = torch.FloatTensor(state[1].reshape(1,-1)).to(device)
-        return self.policy_old.act([img_state, pos_state], memory).cpu().data.numpy().flatten()
+        return self.policy_old.act((img_state, pos_state), memory).cpu().data.numpy().flatten()
 
     def update(self, memory):
         # Monte Carlo estimate of rewards:
@@ -170,14 +202,15 @@ class PPO:
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-5)
 
         # convert list to tensor
-        old_states = torch.squeeze(torch.stack(memory.states).to(device), 1).detach()
+        old_img_states = torch.squeeze(torch.stack(memory.img_states).to(device), 1).detach()
+        old_pos_states = torch.squeeze(torch.stack(memory.pos_states).to(device), 1).detach()
         old_actions = torch.squeeze(torch.stack(memory.actions).to(device), 1).detach()
         old_logprobs = torch.squeeze(torch.stack(memory.logprobs), 1).to(device).detach()
 
         # Optimize policy for K epochs:
         for _ in range(self.K_epochs):
             # Evaluating old actions and values :
-            logprobs, state_values, dist_entropy = self.policy.evaluate(old_states, old_actions)
+            logprobs, state_values, dist_entropy = self.policy.evaluate((old_img_states, old_pos_states), old_actions)
 
             # Finding the ratio (pi_theta / pi_theta__old):
             ratios = torch.exp(logprobs - old_logprobs.detach())
