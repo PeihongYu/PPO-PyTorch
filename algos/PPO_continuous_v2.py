@@ -30,7 +30,8 @@ class FeatureFusion(nn.Module):
         super(FeatureFusion, self).__init__()
         
         self.fcn = FCN16s()
-        self.img_nn =  nn.Linear(4032, 512)
+        # self.img_nn =  nn.Linear(4032, 512)
+        self.img_nn =  nn.Linear(252, 512)
         self.img_tanh = nn.Tanh()
 
         self.pos_nn = nn.Linear(6,16)
