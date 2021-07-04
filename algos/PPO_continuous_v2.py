@@ -30,8 +30,7 @@ class FeatureFusion(nn.Module):
         super(FeatureFusion, self).__init__()
         
         self.fcn = FCN16s()
-        # self.img_nn =  nn.Linear(4032, 512)
-        self.img_nn =  nn.Linear(252, 512)
+        self.img_nn =  nn.Linear(4032//16, 512)
         self.img_tanh = nn.Tanh()
 
         self.pos_nn = nn.Linear(6,16)
@@ -42,8 +41,8 @@ class FeatureFusion(nn.Module):
 
     def forward(self, x):
         x1, x2 = x
-        # print(f'x1 shape: {x1.shape}')
-        # print(f'x2 shape: {x2.shape}')        
+        #print(f'x1 shape: {x1.shape}')
+        #print(f'x2 shape: {x2.shape}')        
 
         x1 = self.fcn(x1)
         x1 = self.img_tanh(self.img_nn(x1))
