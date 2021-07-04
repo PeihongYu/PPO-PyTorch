@@ -4,14 +4,15 @@ Comet experiment: L47-49
 Folder name: L61-67
 Model loading: L125-134
 Start epoch: L148
+# Making image smaller size (//4), reward now sees 360x480 image,  updating state size size accordingly, not saving epoch based model, adding ground collision on more than 2.5 height, printing siatnce in info, update timestamp is 500, move by distance alreaady updated. Importing from drone_env_human_follow_v2
 
 '''
 import matplotlib
 matplotlib.use('Agg')
 
 from comet_ml import Experiment, ExistingExperiment
-from algos.PPO_continuous_v2 import *
-from envs.drone_env_human_follow import *
+from algos.PPO_continuous import *
+from envs.drone_env_human_follow_v2 import *
 import matplotlib.pyplot as plt
 import os
 import time
@@ -48,9 +49,9 @@ if args.log_comet:
         experiment = Experiment(api_key="CC3qOVi4obAD5yimHHXIZ24HA", project_name="human-following",
                                 workspace="peihongyu")
     elif args.user_name == 'vishnu':
-        # experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following-image",
+        # experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following-obstacle",
         #                         workspace="vishnuds")
-        experiment = ExistingExperiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following", previous_experiment="9358b91f5ddc48d8b83db2a1105be9b8", workspace="vishnuds")
+        experiment = ExistingExperiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following-obstacle", previous_experiment="c7cb1a195b9141d491b309055f96305b", workspace="vishnuds")
     else:
         print('User not recongnized. Raising Error')
         raise NameError
@@ -58,15 +59,17 @@ if args.log_comet:
     print(f'Using Comet for logging for user {args.user_name}')
 
 if args.save_traj:
-    # folder_name = '1616904531_image'
     
-    folder_name = 'test_dir' #str(int(time.time()))+'_image'
+    folder_name = '1622175787_obstacle'
+    '''
+    folder_name = str(int(time.time()))+'_obstacle'
     os.mkdir('model/' + folder_name)
     os.mkdir('log/' + folder_name)
     os.mkdir('log/' + folder_name + '/figs/')
     os.mkdir('log/' + folder_name + '/traj/')
-    
-
+    if args.log_comet:
+       experiment.add_tags([folder_name, 'obstacles with 4 img input', 'slow speed']) 
+    '''
 
 def save_trajectory(i_episode, folder_name, trajectory):
     # save figure
@@ -96,7 +99,7 @@ if __name__ == '__main__':
     max_episodes = 100000  # max training episodes
     max_timesteps = 1500  # max timesteps in one episode
 
-    update_timestep = 100#500#100  # update policy every n timesteps
+    update_timestep = 500#100  # update policy every n timesteps
     action_std = 0.5  # constant std for action distribution (Multivariate Normal)
     K_epochs = 80  # update policy for K epochs
     eps_clip = 0.2  # clip parameter for PPO
@@ -121,13 +124,21 @@ if __name__ == '__main__':
     memory = Memory()
     ppo = PPO(state_dim, action_dim, action_std, lr, betas, gamma, K_epochs, eps_clip)
     
+    
     print('Loading model:')
+    print('model/1622175787_obstacle/PPO_continuous_{}.pth'.format(env_name))
+    ppo.policy.load_state_dict(torch.load('model/1622175787_obstacle/PPO_continuous_{}.pth'.format(env_name), map_location=device))
     
-    # print('model/1616006199_image/PPO_continuous_{}.pth'.format(env_name))
-    # ppo.policy.load_state_dict(torch.load('model/1616006199_image/PPO_continuous_{}.pth'.format(env_name), map_location=device))
-    
+    '''
+    print('Loading model:')
+    # for obstacle model starting
+    print('model/1619485684_obstacle/PPO_continuous_{}.pth'.format(env_name))
+    ppo.policy.load_state_dict(torch.load('model/1619485684_obstacle/PPO_continuous_{}.pth'.format(env_name), map_location=device))
+    '''
+    ''' 
     print('model/1616904531_image/PPO_continuous_drone_env_human_follow_v1_3000.pth')
     ppo.policy.load_state_dict(torch.load('model/1616904531_image/PPO_continuous_drone_env_human_follow_v1_2500.pth', map_location=device))
+    '''
     '''
     print('Loading model:')
     print('preTrained/stationary_v2_human.pth')
@@ -145,7 +156,7 @@ if __name__ == '__main__':
     loss = None
 
     # training loop
-    start_ep = 2501 #3001 #1501
+    start_ep = 3501 #3001 #1501
     #for i_episode in range(1, max_episodes + 1):
     for i_episode in range(start_ep, max_episodes + 1):
 
@@ -202,16 +213,16 @@ if __name__ == '__main__':
                                       sum(eplen_history[-100:]) / 100, i_episode)
 
         if args.save_traj and (i_episode % args.traj_log_interval == 0):
-            #save_trajectory(i_episode, folder_name, info['traj'])
-            pass
+            save_trajectory(i_episode, folder_name, info['traj'])
+            # pass
 
         if args.save_model:
-            
+            '''
             # save every 100 episodes
             if i_episode % 500 == 0:
                 torch.save(ppo.policy.state_dict(),
                            'model/' + folder_name + '/PPO_continuous_{}_{}.pth'.format(env_name, i_episode))
-            
+            '''
             # save every 500 episodes
             if i_episode % 500 == 0:
                 torch.save(ppo.policy.state_dict(), 'model/' + folder_name + '/PPO_continuous_{}.pth'.format(env_name))
