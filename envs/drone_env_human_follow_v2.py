@@ -2,7 +2,7 @@ import numpy as np
 from envs.drone_env import *
 from algos.FCN16s import *
 import torch
-
+import cv2
 np.set_printoptions(precision=3, suppress=True)
 
 
@@ -12,8 +12,8 @@ class DroneEnvHumanFollowV1(DroneEnv):
 
         self.reward_version = reward_version
 
-        self.observation_space = Box(low=np.array( [-100, -100, -100, -1, -1, -1] + [-100]*4032),
-                                     high=np.array([100, 100, 100, 1, 1, 1] + [100]*4032))
+        self.observation_space = Box(low=np.array( [-100, -100, -100, -1, -1, -1] + [-100]*252*4 ), #[-100]*4032),
+                                     high=np.array([100, 100, 100, 1, 1, 1] + [100]*252*4)) #[100]*4032))
         self.action_space = Box(low=-1, high=1, shape=(4,))
         
         self.img_model = FCN16s()
@@ -71,7 +71,7 @@ class DroneEnvHumanFollowV1(DroneEnv):
         self.trajectory.add_reward(reward)
 
         print("cur_step:", self.cur_step, "pos:", self.state[:6], "action:", action, "reward: ", round(reward, 3),
-              ", distance", round(0, 3), ", info: ", info, ", lost_count: ", self.lost_count, "freeze_count: ", self.freeze_count)
+              ", distance", round(information['rel_dis'], 3), ", info: ", info, ", lost_count: ", self.lost_count, "freeze_count: ", self.freeze_count)
 
         return cur_state, reward, done, information
 
@@ -94,8 +94,8 @@ class DroneEnvHumanFollowV1(DroneEnv):
                 reward = -1
                 info = "getting away"
 
-        h = 144
-        w = 256
+        h = 360 # 144
+        w = 480 # 256
         K = np.array([[w / 2, 0, w / 2], [0, w / 2, h / 2], [0, 0, 1]])
         img_coord = K.dot(cur_state[0:3])
         img_coord = img_coord / img_coord[2]
@@ -127,7 +127,12 @@ class DroneEnvHumanFollowV1(DroneEnv):
             reward = -50
             done = True
             info = "collision"
-
+        # Extra
+        if self.client.getMultirotorState().kinematics_estimated.position.z_val > 2.5:
+            reward = -50
+            done = True
+            info = "collision"
+        
         if self.reward_version == 'v1':
             reward = reward_v1
 
@@ -137,14 +142,24 @@ class DroneEnvHumanFollowV1(DroneEnv):
         return super().render(mode)
 
     def get_img_feat(self):
-        img = self.get_image(type='rgb')[:,:,::-1]
-        img = img.astype(np.float64) - self.mean_bgr
-        pimg = img.transpose(2,0,1)[np.newaxis,:,:,:]
-        pimg = torch.from_numpy(pimg).float()
+        img_arr = []
+        for camera_id in [0,1,2,4]:
+            self.camera_id = str(camera_id)
+            
+            img = self.get_image(type='rgb')[:,:,::-1]
+            img = cv2.resize(img, (img.shape[1]//4, img.shape[0]//4)) 
+            img = img.astype(np.float64) - self.mean_bgr
+            #pimg = img.transpose(2,0,1)[np.newaxis,:,:,:]
+            pimg = img.transpose(2,0,1)
+            
+            img_arr.append(pimg)
+        pimg = np.array(img_arr)
         
+        self.camera_id = '0'
+        pimg = torch.from_numpy(pimg).float()
         with torch.no_grad():
             img_feat = self.img_model(pimg.cuda())
         
-        img_feat_np = img_feat.cpu().numpy()[0]
-        
+        #img_feat_np = img_feat.cpu().numpy()[0]
+        img_feat_np = torch.flatten(img_feat).cpu().numpy()
         return img_feat_np
