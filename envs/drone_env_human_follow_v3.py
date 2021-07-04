@@ -67,8 +67,8 @@ class DroneEnvHumanFollowV1(DroneEnv):
 
         self.trajectory.add_reward(reward)
 
-        print("cur_step:", self.cur_step, "pos:", self.state[1][-6], "action:", action, "reward: ", round(reward, 3),
-              ", distance", round(0, 3), ", info: ", info, ", lost_count: ", self.lost_count, "freeze_count: ", self.freeze_count)
+        print("cur_step:", self.cur_step, "pos:", self.state[1][-6:], "action:", action, "reward: ", round(reward, 3),
+              ", distance", round(information['rel_dis'],3), ", info: ", info, ", lost_count: ", self.lost_count, "freeze_count: ", self.freeze_count)
 
         return cur_state, reward, done, information
 
@@ -91,8 +91,8 @@ class DroneEnvHumanFollowV1(DroneEnv):
                 reward = -1
                 info = "getting away"
 
-        h = 144
-        w = 256
+        h = 360 # 144
+        w = 480 # 256
         K = np.array([[w / 2, 0, w / 2], [0, w / 2, h / 2], [0, 0, 1]])
         img_coord = K.dot(cur_state[1][0:3])
         img_coord = img_coord / img_coord[2]
@@ -121,6 +121,11 @@ class DroneEnvHumanFollowV1(DroneEnv):
             done = True
             info = "freeze"
         if self.client.simGetCollisionInfo().has_collided:
+            reward = -50
+            done = True
+            info = "collision"
+        # Extra
+        if self.client.getMultirotorState().kinematics_estimated.position.z_val > 2.6:
             reward = -50
             done = True
             info = "collision"
