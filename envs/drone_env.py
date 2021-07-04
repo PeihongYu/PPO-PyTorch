@@ -1,4 +1,4 @@
-import airsim
+# import airsim
 import time
 import numpy as np
 from PIL import Image
@@ -7,6 +7,10 @@ from gym.spaces import Box
 from collections import OrderedDict
 from scipy.spatial.transform import Rotation as R
 import math
+
+import sys
+sys.path.insert(1, '/media/vishnu/New Volume/AirSim/PythonClient/')
+import airsim
 
 np.set_printoptions(precision=3, suppress=True)
 
@@ -66,7 +70,8 @@ class DroneEnv(gym.Env):
         self.client.enableApiControl(True)
         self.client.armDisarm(True)
         orientation = airsim.to_quaternion(-np.pi / 6, 0, 0)
-        self.client.simSetCameraOrientation('0', orientation)
+        # self.client.simSetCameraOrientation('0', orientation)
+        self.client.simSetCameraPose('0', orientation)
 
         # obtain human id
         # -- Method 1
@@ -88,11 +93,18 @@ class DroneEnv(gym.Env):
             self.client.enableApiControl(True)
             self.client.armDisarm(True)
             orientation = airsim.to_quaternion(-np.pi / 6, 0 ,0)
-            self.client.simSetCameraOrientation('0', orientation)
-        
+            # self.client.simSetCameraOrientation('0', orientation)
+            self.client.simSetCameraPose('0', orientation)
+            self.client.takeoffAsync().join()
+        # Making velocity zero
+        self.client.moveByVelocityAsync(0, 0, 0, duration=0.01,
+                                            drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
+                                            yaw_mode=airsim.YawMode(True, 0)).join()
+
+
         # set the starting position of the drone to be at 4 meters away from the human
         rel_pos = self.local_to_world(np.array([0, -2, -4]), 1) 
-        rel_pos += np.random.rand(*rel_pos.shape)
+        # rel_pos += np.random.rand(*rel_pos.shape)
         position = self.client.simGetObjectPose(self.HUMAN_ID).position
         position.z_val -= 1.7 / 2
         position.x_val += rel_pos[0]
@@ -103,7 +115,7 @@ class DroneEnv(gym.Env):
         self.client.simSetVehiclePose(pose, True)
 
         # use songxiaocheng's airsim (https://github.com/songxiaocheng/AirSim)
-        self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, 1).join()
+        # self.client.moveToPositionAsync(position.x_val, position.y_val, position.z_val, 1).join()
 
         # use official airsim
         # self.client.takeoffAsync().join()
@@ -115,17 +127,18 @@ class DroneEnv(gym.Env):
             return self.get_image(type='rgb')
 
     def move_by_dist(self, diff, ForwardOnly=False):
-        duration = 1.0 #0.1
+        duration =  0.5 # 0.05 #0.1
         if ForwardOnly:
             # 3D control, vehicle's front always points in the direction of travel
             self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.ForwardOnly,
-                                            yaw_mode=airsim.YawMode(False, 0))
+                                            yaw_mode=airsim.YawMode(False, 0)).join()
         else:
             # 4D control, vehicle's front direction is controlled by diff[3]
             self.client.moveByVelocityAsync(float(diff[0]), float(diff[1]), float(diff[2]), duration,
                                             drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
-                                            yaw_mode=airsim.YawMode(True, diff[3]))
+                                            yaw_mode=airsim.YawMode(True, diff[3])).join()
+        
         return 0
 
     def get_state(self):
