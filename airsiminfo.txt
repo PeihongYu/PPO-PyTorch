@@ -1,0 +1,7 @@
+equirement already satisfied: airsim in /scratch1/vishnuds/anaconda3/envs/surreal/lib/python3.8/site-packages (1.2.8)
+Requirement already satisfied: msgpack-rpc-python in /scratch1/vishnuds/anaconda3/envs/surreal/lib/python3.8/site-packages (from airsim) (0.4.1)
+Requirement already satisfied: opencv-contrib-python in /scratch1/vishnuds/anaconda3/envs/surreal/lib/python3.8/site-packages (from airsim) (4.4.0.42)
+Requirement already satisfied: numpy in /scratch1/vishnuds/anaconda3/envs/surreal/lib/python3.8/site-packages (from airsim) (1.19.1)
+Requirement already satisfied: tornado<5,>=3 in /scratch1/vishnuds/anaconda3/envs/surreal/lib/python3.8/site-packages (from msgpack-rpc-python->airsim) (4.5.3)
+Requirement already satisfied: msgpack-python in /scratch1/vishnuds/anaconda3/envs/surreal/lib/python3.8/site-packages (from msgpack-rpc-python->airsim) (0.5.6)
+
