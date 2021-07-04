@@ -4,20 +4,22 @@ Comet experiment: L47-49
 Folder name: L61-67
 Model loading: L125-134
 Start epoch: L148
-
+#### back to multiplier 1. Earlier was 2.
+##### not saving models at epochs anymore
+#### Detecting drone above 2.60 as crash: Line 127 in envs.drone_env_human_follow_v3
 '''
 import matplotlib
 matplotlib.use('Agg')
 
 from comet_ml import Experiment, ExistingExperiment
 from algos.PPO_continuous_v2 import *
-from envs.drone_env_human_follow_v3 import *
+from envs.drone_env_human_follow_v2 import *
 import matplotlib.pyplot as plt
 import os
 import time
 import argparse
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(f'Using device: {device}')
 
 parser = argparse.ArgumentParser()
@@ -48,9 +50,9 @@ if args.log_comet:
         experiment = Experiment(api_key="CC3qOVi4obAD5yimHHXIZ24HA", project_name="human-following",
                                 workspace="peihongyu")
     elif args.user_name == 'vishnu':
-        experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following-image",
+        experiment = Experiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following-image-v2",
                                 workspace="vishnuds")
-        # experiment = ExistingExperiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following", previous_experiment="9358b91f5ddc48d8b83db2a1105be9b8", workspace="vishnuds")
+        # experiment = ExistingExperiment(api_key="NaB7y40lAj6qp3SyYRONzLiuJ", project_name="human-following", previous_experiment="3417ff6fab6e49d58f309bbc7c77e480", workspace="vishnuds")
     else:
         print('User not recongnized. Raising Error')
         raise NameError
@@ -58,6 +60,9 @@ if args.log_comet:
     print(f'Using Comet for logging for user {args.user_name}')
 
 if args.save_traj:
+    # folder_name = str(int(time.time()))+'_image_v2'
+    # folder_name = '1618807618_image_v2'
+    
     folder_name = str(int(time.time()))+'_image_v2'
     os.mkdir('model/' + folder_name)
     os.mkdir('log/' + folder_name)
@@ -94,7 +99,7 @@ if __name__ == '__main__':
     max_episodes = 100000  # max training episodes
     max_timesteps = 1500  # max timesteps in one episode
 
-    update_timestep = 20 #500#100  # update policy every n timesteps
+    update_timestep = 30 #500#100  # update policy every n timesteps
     action_std = 0.5  # constant std for action distribution (Multivariate Normal)
     K_epochs = 80  # update policy for K epochs
     eps_clip = 0.2  # clip parameter for PPO
@@ -120,10 +125,10 @@ if __name__ == '__main__':
     ppo = PPO(state_dim, action_dim, action_std, lr, betas, gamma, K_epochs, eps_clip)
     '''
     print('Loading model:')
-    
-    # print('model/1616006199_image/PPO_continuous_{}.pth'.format(env_name))
-    # ppo.policy.load_state_dict(torch.load('model/1616006199_image/PPO_continuous_{}.pth'.format(env_name), map_location=device))
-    
+    print('model/1618807618_image_v2/PPO_continuous_{}.pth'.format(env_name))
+    ppo.policy.load_state_dict(torch.load('model/1618807618_image_v2/PPO_continuous_{}.pth'.format(env_name), map_location=device))
+    '''
+    '''
     print('model/1616904531_image/PPO_continuous_drone_env_human_follow_v1_3000.pth')
     ppo.policy.load_state_dict(torch.load('model/1616904531_image/PPO_continuous_drone_env_human_follow_v1_2500.pth', map_location=device))
     
@@ -143,7 +148,7 @@ if __name__ == '__main__':
     loss = None
 
     # training loop
-    start_ep = 1 #3001 #1501
+    start_ep = 1 #1001 #3001 #1501
     #for i_episode in range(1, max_episodes + 1):
     for i_episode in range(start_ep, max_episodes + 1):
 
@@ -206,9 +211,9 @@ if __name__ == '__main__':
         if args.save_model:
             
             # save every 100 episodes
-            if i_episode % 500 == 0:
-                torch.save(ppo.policy.state_dict(),
-                           'model/' + folder_name + '/PPO_continuous_{}_{}.pth'.format(env_name, i_episode))
+            # if i_episode % 500 == 0:
+            #     torch.save(ppo.policy.state_dict(),
+            #                'model/' + folder_name + '/PPO_continuous_{}_{}.pth'.format(env_name, i_episode))
             
             # save every 500 episodes
             if i_episode % 500 == 0:
